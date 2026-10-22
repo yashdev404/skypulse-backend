@@ -1,13 +1,21 @@
 package com.yash.skypulse_backend.model;
 
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+@Entity
+@Table(name = "products")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Product {
+
+    
+    @Id
     private String id;
     private String name;
     private String description;

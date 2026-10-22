@@ -1,24 +1,74 @@
 package com.yash.skypulse_backend.controller;
 
+import com.yash.skypulse_backend.dto.CartItemRequest;
+import com.yash.skypulse_backend.dto.CheckoutRequest;
+import com.yash.skypulse_backend.model.Order;
+import com.yash.skypulse_backend.model.OrderItem;
 import com.yash.skypulse_backend.model.Product;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import com.yash.skypulse_backend.repository.OrderRepository;
+import com.yash.skypulse_backend.repository.ProductRepository;
+import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/shop")
 public class ShopController {
 
+    @Autowired
+    private ProductRepository productRepository;
+    
+    @Autowired
+    private OrderRepository orderRepository;
+
     @GetMapping("/products")
     public List<Product> getAllProducts() {
-        return Arrays.asList(
-            new Product("1", "Orion SkyQuest XT8 Classic Dobsonian", "Highly detailed 1:100 scale model.", 459.99, "Telescopes", "https://developer.android.com/static/images/brand/android-logo.png", 50, true, 4.8, 1240, 499.99),
-            new Product("2", "NASA Vintage Worm Logo Hoodie", "100% cotton, glow in the dark.", 45.00, "Apparel", "https://developer.android.com/static/images/brand/android-logo.png", 200, true, 4.9, 856, null),
-            new Product("3", "Authentic Campo del Cielo Meteorite", "Perfect beginner telescope for planetary viewing.", 120.00, "Meteorites", "https://developer.android.com/static/images/brand/android-logo.png", 10, false, 4.7, 92, 150.00),
-            new Product("4", "James Webb Space Telescope Model", "High-res glossy print (24x36).", 85.50, "Models", "https://developer.android.com/static/images/brand/android-logo.png", 100, false, 4.6, 215, 95.00)
-        );
+        return productRepository.findAll();
+    }
+    
+    @PostMapping("/checkout")
+    @Transactional // Ensures that if anything fails, the whole transaction rolls back!
+    public ResponseEntity<?> checkout(@RequestBody CheckoutRequest request) {
+        double totalAmount = 0;
+        List<OrderItem> orderItems = new ArrayList<>();
+        
+        for (CartItemRequest itemReq : request.getItems()) {
+            // Find the product in the database
+            Product product = productRepository.findById(itemReq.getProductId()).orElse(null);
+            
+            // Check if product exists and if we have enough stock
+            if (product == null || product.getStockQuantity() < itemReq.getQuantity()) {
+                return ResponseEntity.badRequest().body("Insufficient stock for product ID: " + itemReq.getProductId());
+            }
+            
+            // Deduct the stock
+            product.setStockQuantity(product.getStockQuantity() - itemReq.getQuantity());
+            productRepository.save(product); // Update the DB
+            
+            // Create an OrderItem
+            OrderItem orderItem = new OrderItem();
+            orderItem.setProductId(product.getId());
+            orderItem.setQuantity(itemReq.getQuantity());
+            orderItem.setPriceAtPurchase(product.getPrice());
+            orderItems.add(orderItem);
+            
+            // Add to total cost
+            totalAmount += (product.getPrice() * itemReq.getQuantity());
+        }
+        
+        // Create and save the final Order
+        Order newOrder = new Order();
+        newOrder.setCustomerName("Yash Shukla"); // Hardcoded until we build the Profile/Auth system
+        newOrder.setTotalAmount(totalAmount);
+        newOrder.setStatus("PAID");
+        newOrder.setItems(orderItems);
+        
+        Order savedOrder = orderRepository.save(newOrder);
+        
+        return ResponseEntity.ok(savedOrder);
     }
 }
