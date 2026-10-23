@@ -5,5 +5,6 @@ import java.util.List;
 
 @Data
 public class CheckoutRequest {
+    private String username;
     private List<CartItemRequest> items;
 }

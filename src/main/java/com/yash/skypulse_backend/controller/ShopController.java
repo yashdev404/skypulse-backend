@@ -62,7 +62,7 @@ public class ShopController {
         
         // Create and save the final Order
         Order newOrder = new Order();
-        newOrder.setCustomerName("Yash Shukla"); // Hardcoded until we build the Profile/Auth system
+        newOrder.setCustomerName(request.getUsername() != null ? request.getUsername() : "YashCommander");
         newOrder.setTotalAmount(totalAmount);
         newOrder.setStatus("PAID");
         newOrder.setItems(orderItems);
@@ -70,5 +70,10 @@ public class ShopController {
         Order savedOrder = orderRepository.save(newOrder);
         
         return ResponseEntity.ok(savedOrder);
+    }
+
+    @GetMapping("/orders/{username}")
+    public List<Order> getUserOrders(@PathVariable String username) {
+        return orderRepository.findByCustomerName(username);
     }
 }

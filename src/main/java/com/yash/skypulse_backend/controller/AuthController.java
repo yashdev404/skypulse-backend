@@ -57,4 +57,17 @@ public class AuthController {
         String token = jwtUtil.generateToken(user.getUsername(), user.getId());
         return ResponseEntity.ok(new AuthResponse(token, user.getId(), user.getUsername(), user.getEmail()));
     }
+
+    @PutMapping("/password")
+    public ResponseEntity<?> changePassword(@RequestBody com.yash.skypulse_backend.dto.ChangePasswordRequest request) {
+        User user = userRepository.findByUsername(request.getUsername()).orElse(null);
+        if (user == null || !passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            return ResponseEntity.badRequest().body("Invalid username or current password!");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        return ResponseEntity.ok("Password updated successfully!");
+    }
 }
